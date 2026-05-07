@@ -316,6 +316,31 @@
       padding: 11px 12px;
     }
 
+    input[type="file"] {
+      min-height: 42px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    input[type="file"]::file-selector-button {
+      min-height: 34px;
+      margin-right: 10px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 8px;
+      color: #fff;
+      background: var(--accent);
+      cursor: pointer;
+      font-weight: 750;
+    }
+
+    .field-status {
+      min-height: 16px;
+      color: rgba(255, 247, 251, 0.68);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
     select {
       color: var(--ink);
       background-color: rgba(16, 18, 34, 0.96);
@@ -585,7 +610,7 @@
       position: absolute;
       left: 50%;
       top: 50%;
-      width: clamp(86px, 11vw, 150px);
+      width: clamp(100px, 13vw, 174px);
       aspect-ratio: 4 / 5;
       padding: 7px;
       border: 1px solid rgba(255, 255, 255, 0.36);
@@ -775,6 +800,7 @@
       .stage-wrap {
         min-height: 220vh;
         padding: 0;
+        perspective: 1050px;
       }
 
       .scene {
@@ -782,6 +808,7 @@
         height: 220vh;
         min-width: 220vw;
         min-height: 220vh;
+        will-change: transform;
       }
 
       .hint {
@@ -795,32 +822,22 @@
         max-width: min(240px, 58vw);
         backdrop-filter: none;
         box-shadow: none;
-        text-shadow: 0 0 7px rgba(255, 255, 255, 0.38);
+        text-shadow: 0 0 5px rgba(255, 255, 255, 0.34);
         filter: none;
-        backface-visibility: hidden;
-        transform-style: flat;
-        transform:
-          translate(-50%, -50%)
-          translate3d(var(--x), var(--y), var(--z))
-          rotateY(var(--nry, 0deg))
-          rotateX(var(--nrx, 0deg))
-          rotateZ(calc(var(--roll) + var(--spin, 0deg)))
-          translateZ(0.1px);
+        backface-visibility: visible;
+        transform-style: preserve-3d;
         animation: none;
       }
 
       .photo {
         box-shadow: none;
-        backface-visibility: hidden;
-        transform-style: flat;
-        transform:
-          translate(-50%, -50%)
-          translate3d(var(--x), var(--y), var(--z))
-          rotateY(var(--nry, 0deg))
-          rotateX(var(--nrx, 0deg))
-          rotateZ(calc(var(--roll) + var(--spin, 0deg)))
-          translateZ(0.1px);
+        backface-visibility: visible;
+        transform-style: preserve-3d;
         animation: none;
+      }
+
+      .spark {
+        display: none;
       }
 
       .ring {
@@ -884,13 +901,14 @@ Dreaming of us</textarea>
 
           <div class="field">
             <label for="imageUpload">Ảnh</label>
-            <input id="imageUpload" type="file" accept="image/*" multiple>
+            <input id="imageUpload" type="file" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.bmp,.avif" multiple>
+            <div class="field-status" id="imageStatus" aria-live="polite"></div>
             <div class="image-list" id="imageList"></div>
           </div>
 
           <div class="field">
             <label for="musicUpload">Nhạc nền</label>
-            <input id="musicUpload" type="file" accept="audio/*">
+            <input id="musicUpload" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.flac,.webm">
             <div class="audio-panel">
               <div class="audio-title" id="musicTitle">default-music.mp3</div>
               <audio id="musicPlayer" src="default-music.mp3" controls loop preload="metadata"></audio>
@@ -952,6 +970,7 @@ Dreaming of us</textarea>
     const phrasesInput = document.getElementById("phrases");
     const newPhraseInput = document.getElementById("newPhrase");
     const imageUpload = document.getElementById("imageUpload");
+    const imageStatus = document.getElementById("imageStatus");
     const imageList = document.getElementById("imageList");
     const musicUpload = document.getElementById("musicUpload");
     const musicPlayer = document.getElementById("musicPlayer");
@@ -969,7 +988,9 @@ Dreaming of us</textarea>
     const nativeColor = document.getElementById("nativeColor");
 
     const palette = ["#ff3f7f", "#ff6b4a", "#ffd166", "#36d399", "#4cc9f0", "#b96dff"];
-    let rotation = { x: 0, y: 0, z: 0 };
+    let sceneBaseTransform = "";
+    let dragTransform = "";
+    let dragRotationFrame = null;
     let dragState = null;
     let inertiaFrame = null;
     let velocity = { x: 0, y: 0, z: 0 };
@@ -1054,10 +1075,6 @@ Dreaming of us</textarea>
       return ((value % size) + size) % size;
     }
 
-    function normalizeAngle(value) {
-      return ((value % 360) + 360) % 360;
-    }
-
     function seededIndex(x, y, layer, length) {
       if (!length) return 0;
       const value = Math.abs((x * 73856093) ^ (y * 19349663) ^ (layer * 83492791) ^ (layoutSeed * 2654435761));
@@ -1095,14 +1112,14 @@ Dreaming of us</textarea>
 
       const isMobile = isMobileViewport();
       const cellX = isMobile
-        ? Math.max(160, Math.min(225, window.innerWidth * 0.48))
+        ? Math.max(190, Math.min(270, window.innerWidth * 0.58))
         : Math.max(270, Math.min(380, window.innerWidth * 0.22));
       const cellY = isMobile
-        ? Math.max(74, Math.min(110, window.innerHeight * 0.12))
+        ? Math.max(92, Math.min(136, window.innerHeight * 0.15))
         : Math.max(105, Math.min(150, window.innerHeight * 0.15));
-      const cols = Math.ceil(window.innerWidth / cellX) + (isMobile ? 7 : 18);
-      const rows = Math.ceil(window.innerHeight / cellY) + (isMobile ? 7 : 16);
-      const layers = isMobile ? [-110, 0, 110] : [-220, -110, 0, 110, 220];
+      const cols = Math.ceil(window.innerWidth / cellX) + (isMobile ? 10 : 18);
+      const rows = Math.ceil(window.innerHeight / cellY) + (isMobile ? 10 : 16);
+      const layers = isMobile ? [-120, -86, -52, -18, 18, 52, 86, 120] : [-220, -110, 0, 110, 220];
       const offsetX = positiveModulo(pan.x, cellX);
       const offsetY = positiveModulo(pan.y, cellY);
       const baseCol = Math.floor(pan.x / cellX);
@@ -1136,7 +1153,7 @@ Dreaming of us</textarea>
               continue;
             }
 
-            if (phrases.length && positiveModulo(worldCol + worldRow + layerIndex, isMobile ? 3 : 4) === 0) {
+            if (phrases.length && positiveModulo(worldCol + worldRow + layerIndex, isMobile ? 5 : 4) === 0) {
               const item = document.createElement("span");
               item.className = "phrase";
               item.textContent = phrases[seededIndex(worldCol, worldRow, layerIndex, phrases.length)];
@@ -1147,7 +1164,7 @@ Dreaming of us</textarea>
         }
       });
 
-      const sparkCount = isMobile ? 5 : 14;
+      const sparkCount = isMobile ? 0 : 14;
       for (let i = 0; i < sparkCount; i += 1) {
         const spark = document.createElement("i");
         const seed = i + Math.floor(pan.x * 0.04) + Math.floor(pan.y * 0.04) + layoutSeed * 19;
@@ -1202,20 +1219,48 @@ Dreaming of us</textarea>
       });
     }
 
-    function scheduleRender() {
-      if (renderFrame) return;
-      if (isMobileViewport() && dragState) return;
-      const threshold = 28;
-      if (Math.abs(pan.x - lastRenderPan.x) < threshold && Math.abs(pan.y - lastRenderPan.y) < threshold) return;
-      renderFrame = requestAnimationFrame(renderPhrases);
+    function isImageFile(file) {
+      return file.type.startsWith("image/")
+        || /\.(png|jpe?g|gif|webp|heic|heif|bmp|avif)$/i.test(file.name || "");
     }
 
-    function updateRotation() {
-      scene.style.setProperty("--rx", `${rotation.x}deg`);
-      scene.style.setProperty("--ry", `${rotation.y}deg`);
-      scene.style.setProperty("--rz", `${rotation.z || 0}deg`);
-      scene.style.setProperty("--nrx", `${-rotation.x}deg`);
-      scene.style.setProperty("--nry", `${-rotation.y}deg`);
+    function isAudioFile(file) {
+      return file.type.startsWith("audio/")
+        || /\.(mp3|m4a|aac|wav|ogg|oga|flac|webm)$/i.test(file.name || "");
+    }
+
+    function applySceneTransform() {
+      const mobileScale = isMobileViewport() ? "scale(0.84) " : "";
+      scene.style.transform = `${mobileScale}${dragTransform} ${sceneBaseTransform}`.trim();
+    }
+
+    function applyDragRotation() {
+      dragRotationFrame = null;
+      if (!dragState) return;
+
+      const dx = dragState.currentX - dragState.startX;
+      const dy = dragState.currentY - dragState.startY;
+      const distance = Math.hypot(dx, dy);
+
+      if (distance < 0.01) {
+        dragTransform = "";
+        sceneBaseTransform = dragState.startTransform;
+        applySceneTransform();
+        return;
+      }
+
+      const speed = isMobileViewport() ? 0.36 : 0.28;
+      const axisX = -dy / distance;
+      const axisY = dx / distance;
+      dragTransform = `rotate3d(${axisX.toFixed(5)}, ${axisY.toFixed(5)}, 0, ${(distance * speed).toFixed(3)}deg)`;
+      sceneBaseTransform = dragState.startTransform;
+      applySceneTransform();
+    }
+
+    function requestDragRotation() {
+      if (!dragRotationFrame) {
+        dragRotationFrame = requestAnimationFrame(applyDragRotation);
+      }
     }
 
     function stopInertia() {
@@ -1228,6 +1273,7 @@ Dreaming of us</textarea>
 
     function beginDrag(event) {
       stopInertia();
+      page.classList.add("is-dragging");
       if (!isMobileViewport()) {
         pan.x -= flowOffset.x;
         pan.y -= flowOffset.y;
@@ -1238,8 +1284,13 @@ Dreaming of us</textarea>
       }
       stageWrap.setPointerCapture(event.pointerId);
       dragState = {
+        startX: event.clientX,
+        startY: event.clientY,
+        currentX: event.clientX,
+        currentY: event.clientY,
         lastX: event.clientX,
-        lastY: event.clientY
+        lastY: event.clientY,
+        startTransform: sceneBaseTransform
       };
     }
 
@@ -1247,27 +1298,35 @@ Dreaming of us</textarea>
       if (!dragState) return;
       const dx = event.clientX - dragState.lastX;
       const dy = event.clientY - dragState.lastY;
-      rotation.y = normalizeAngle(rotation.y + dx * 0.18);
-      rotation.x = normalizeAngle(rotation.x - dy * 0.18);
       velocity.y = dx * 0.08;
       velocity.x = dy * -0.04;
       velocity.z = dy * 0.01;
       dragState.lastX = event.clientX;
       dragState.lastY = event.clientY;
-      updateRotation();
-
-      if (!isMobileViewport()) {
-        pan.x += dx;
-        pan.y += dy;
-        scheduleRender();
-      }
+      dragState.currentX = event.clientX;
+      dragState.currentY = event.clientY;
+      requestDragRotation();
     }
 
     function endDrag(event) {
       if (dragState) {
-        stageWrap.releasePointerCapture(event.pointerId);
+        if (dragRotationFrame) {
+          cancelAnimationFrame(dragRotationFrame);
+          applyDragRotation();
+        }
+
+        if (dragTransform) {
+          sceneBaseTransform = `${dragTransform} ${dragState.startTransform}`.trim();
+          dragTransform = "";
+          applySceneTransform();
+        }
+
+        if (stageWrap.hasPointerCapture(event.pointerId)) {
+          stageWrap.releasePointerCapture(event.pointerId);
+        }
       }
       dragState = null;
+      page.classList.remove("is-dragging");
     }
 
     function flow(time) {
@@ -1276,8 +1335,11 @@ Dreaming of us</textarea>
       lastFlowTime = time;
 
       if (!dragState) {
-        flowOffset.x -= delta * 0.012;
-        flowOffset.y += delta * 0.015;
+        const isMobile = isMobileViewport();
+        const flowXSpeed = isMobile ? 0.28 : 1;
+        const flowYSpeed = isMobile ? 0.82 : 1;
+        flowOffset.x -= delta * 0.012 * flowXSpeed;
+        flowOffset.y += delta * 0.015 * flowYSpeed;
         flowOffset.tilt = Math.sin(time * 0.00035) * 0.45;
         phraseRing.style.setProperty("--flow-x", `${flowOffset.x}px`);
         phraseRing.style.setProperty("--flow-y", `${flowOffset.y}px`);
@@ -1295,6 +1357,11 @@ Dreaming of us</textarea>
       }
 
       flowFrame = requestAnimationFrame(flow);
+    }
+
+    function handleResize() {
+      renderPhrases();
+      applySceneTransform();
     }
 
     palette.forEach((color) => {
@@ -1350,34 +1417,60 @@ Dreaming of us</textarea>
     });
 
     imageUpload.addEventListener("change", () => {
-      const newImages = [...imageUpload.files].map((file) => ({
-        name: file.name,
+      const selectedFiles = Array.from(imageUpload.files || []);
+      const files = selectedFiles.filter(isImageFile);
+
+      if (!selectedFiles.length) {
+        imageStatus.textContent = "";
+        imageUpload.value = "";
+        return;
+      }
+
+      if (!files.length) {
+        imageStatus.textContent = "File đã chọn không phải ảnh.";
+        imageUpload.value = "";
+        return;
+      }
+
+      const unsupportedCount = files.filter((file) => /\.(heic|heif)$/i.test(file.name || "")).length;
+      const newImages = files.map((file) => ({
+        name: file.name || "Ảnh đã chọn",
         url: URL.createObjectURL(file)
       }));
+
       uploadedImages = [...uploadedImages, ...newImages];
-      imageUpload.value = "";
       renderImageList();
       renderPhrases();
+      imageStatus.textContent = `Đã thêm ${newImages.length} ảnh${unsupportedCount ? ". HEIC/HEIF có thể không hiển thị trên một số trình duyệt." : "."}`;
+      imageUpload.value = "";
     });
 
     musicUpload.addEventListener("change", async () => {
-      const file = musicUpload.files?.[0];
-      if (!file) return;
-
-      if (uploadedMusicUrl) {
-        URL.revokeObjectURL(uploadedMusicUrl);
+      const file = Array.from(musicUpload.files || []).find(isAudioFile);
+      if (!file) {
+        musicUpload.value = "";
+        return;
       }
 
-      uploadedMusicUrl = URL.createObjectURL(file);
-      musicPlayer.src = uploadedMusicUrl;
-      musicPlayer.loop = true;
-      musicTitle.textContent = file.name;
-      musicUpload.value = "";
+      if (uploadedMusicUrl) {
+        if (uploadedMusicUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(uploadedMusicUrl);
+        }
+        uploadedMusicUrl = "";
+      }
 
       try {
+        uploadedMusicUrl = URL.createObjectURL(file);
+        musicPlayer.src = uploadedMusicUrl;
+        musicPlayer.loop = true;
+        musicTitle.textContent = file.name || "Nhạc đã chọn";
+        musicPlayer.load();
+
         await musicPlayer.play();
       } catch (error) {
         console.warn("Audio playback requires a user gesture in this browser.", error);
+      } finally {
+        musicUpload.value = "";
       }
     });
 
@@ -1428,12 +1521,14 @@ Dreaming of us</textarea>
     stageWrap.addEventListener("pointermove", moveDrag);
     stageWrap.addEventListener("pointerup", endDrag);
     stageWrap.addEventListener("pointercancel", endDrag);
-    window.addEventListener("resize", renderPhrases);
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    window.addEventListener("resize", handleResize);
 
     setAccent(palette[0]);
     renderImageList();
     renderPhrases();
-    updateRotation();
+    applySceneTransform();
     flowFrame = requestAnimationFrame(flow);
   </script>
 </body>
