@@ -573,6 +573,8 @@
       opacity: var(--opacity);
       filter: saturate(1.08);
       backface-visibility: visible;
+      transform-style: preserve-3d;
+      will-change: transform;
       animation: cardBreathe var(--breathe-speed, 5s) ease-in-out infinite alternate;
       animation-delay: var(--breathe-delay, 0s);
       user-select: none;
@@ -600,6 +602,8 @@
         rotateZ(calc(var(--roll) + var(--spin, 0deg)));
       opacity: var(--opacity);
       backface-visibility: visible;
+      transform-style: preserve-3d;
+      will-change: transform;
       animation: cardBreathe var(--breathe-speed, 5s) ease-in-out infinite alternate;
       animation-delay: var(--breathe-delay, 0s);
       user-select: none;
@@ -786,6 +790,7 @@
       }
 
       .phrase {
+        max-width: min(240px, 58vw);
         backdrop-filter: none;
         box-shadow: 0 0 10px var(--accent-soft);
         animation: none;
@@ -1033,6 +1038,10 @@ Dreaming of us</textarea>
       return value % length;
     }
 
+    function isMobileViewport() {
+      return window.innerWidth <= 820;
+    }
+
     function placeSpaceElement(item, x, y, z, seed) {
       const tilt = z < 0 ? -1.5 : 1.5;
       const turn = z < 0 ? -2.5 : 2.5;
@@ -1057,16 +1066,16 @@ Dreaming of us</textarea>
       phraseRing.innerHTML = "";
       if (!phrases.length && !uploadedImages.length) return;
 
-      const isMobile = window.innerWidth <= 820;
+      const isMobile = isMobileViewport();
       const cellX = isMobile
-        ? Math.max(300, Math.min(430, window.innerWidth * 0.78))
+        ? Math.max(190, Math.min(280, window.innerWidth * 0.54))
         : Math.max(270, Math.min(380, window.innerWidth * 0.22));
       const cellY = isMobile
-        ? Math.max(145, Math.min(210, window.innerHeight * 0.22))
+        ? Math.max(86, Math.min(130, window.innerHeight * 0.14))
         : Math.max(105, Math.min(150, window.innerHeight * 0.15));
-      const cols = Math.ceil(window.innerWidth / cellX) + (isMobile ? 8 : 18);
-      const rows = Math.ceil(window.innerHeight / cellY) + (isMobile ? 8 : 16);
-      const layers = isMobile ? [-120, 0, 120] : [-220, -110, 0, 110, 220];
+      const cols = Math.ceil(window.innerWidth / cellX) + (isMobile ? 10 : 18);
+      const rows = Math.ceil(window.innerHeight / cellY) + (isMobile ? 10 : 16);
+      const layers = isMobile ? [-90, 0, 90] : [-220, -110, 0, 110, 220];
       const offsetX = positiveModulo(pan.x, cellX);
       const offsetY = positiveModulo(pan.y, cellY);
       const baseCol = Math.floor(pan.x / cellX);
@@ -1083,9 +1092,9 @@ Dreaming of us</textarea>
             const worldRow = baseRow + row;
             const seed = worldCol * 31 + worldRow * 47 + layerIndex * 71;
             const depthScale = 0.94 + layerIndex * 0.025;
-            const diagonalShift = row * 64 * depthScale;
-            const stagger = positiveModulo(worldRow, 2) * cellX * 0.32;
-            const x = (col * cellX - offsetX + diagonalShift + stagger) * depthScale + (layerIndex % 2) * 34;
+            const diagonalShift = row * (isMobile ? 30 : 64) * depthScale;
+            const stagger = positiveModulo(worldRow, 2) * cellX * (isMobile ? 0.18 : 0.32);
+            const x = (col * cellX - offsetX + diagonalShift + stagger) * depthScale + (layerIndex % 2) * (isMobile ? 18 : 34);
             const y = (row * cellY - offsetY) * depthScale;
             const shouldPlaceImage = uploadedImages.length && positiveModulo(seed, isMobile ? 37 : 23) === 0;
 
@@ -1100,7 +1109,7 @@ Dreaming of us</textarea>
               continue;
             }
 
-            if (phrases.length && positiveModulo(worldCol + worldRow + layerIndex, isMobile ? 6 : 4) === 0) {
+            if (phrases.length && positiveModulo(worldCol + worldRow + layerIndex, isMobile ? 3 : 4) === 0) {
               const item = document.createElement("span");
               item.className = "phrase";
               item.textContent = phrases[seededIndex(worldCol, worldRow, layerIndex, phrases.length)];
@@ -1168,7 +1177,8 @@ Dreaming of us</textarea>
 
     function scheduleRender() {
       if (renderFrame) return;
-      if (Math.abs(pan.x - lastRenderPan.x) < 28 && Math.abs(pan.y - lastRenderPan.y) < 28) return;
+      const threshold = isMobileViewport() && dragState ? 140 : 28;
+      if (Math.abs(pan.x - lastRenderPan.x) < threshold && Math.abs(pan.y - lastRenderPan.y) < threshold) return;
       renderFrame = requestAnimationFrame(renderPhrases);
     }
 
@@ -1223,6 +1233,9 @@ Dreaming of us</textarea>
         stageWrap.releasePointerCapture(event.pointerId);
       }
       dragState = null;
+      if (isMobileViewport()) {
+        renderPhrases();
+      }
     }
 
     function flow(time) {
