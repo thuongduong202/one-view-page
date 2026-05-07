@@ -794,13 +794,32 @@
       .phrase {
         max-width: min(240px, 58vw);
         backdrop-filter: none;
-        box-shadow: 0 0 10px var(--accent-soft);
-        text-shadow: 0 0 8px rgba(255, 255, 255, 0.42);
+        box-shadow: none;
+        text-shadow: 0 0 7px rgba(255, 255, 255, 0.38);
+        filter: none;
+        backface-visibility: hidden;
+        transform-style: flat;
+        transform:
+          translate(-50%, -50%)
+          translate3d(var(--x), var(--y), var(--z))
+          rotateY(var(--nry, 0deg))
+          rotateX(var(--nrx, 0deg))
+          rotateZ(calc(var(--roll) + var(--spin, 0deg)))
+          translateZ(0.1px);
         animation: none;
       }
 
       .photo {
-        box-shadow: 0 0 14px var(--accent-soft);
+        box-shadow: none;
+        backface-visibility: hidden;
+        transform-style: flat;
+        transform:
+          translate(-50%, -50%)
+          translate3d(var(--x), var(--y), var(--z))
+          rotateY(var(--nry, 0deg))
+          rotateX(var(--nrx, 0deg))
+          rotateZ(calc(var(--roll) + var(--spin, 0deg)))
+          translateZ(0.1px);
         animation: none;
       }
 
@@ -1035,6 +1054,10 @@ Dreaming of us</textarea>
       return ((value % size) + size) % size;
     }
 
+    function normalizeAngle(value) {
+      return ((value % 360) + 360) % 360;
+    }
+
     function seededIndex(x, y, layer, length) {
       if (!length) return 0;
       const value = Math.abs((x * 73856093) ^ (y * 19349663) ^ (layer * 83492791) ^ (layoutSeed * 2654435761));
@@ -1077,8 +1100,8 @@ Dreaming of us</textarea>
       const cellY = isMobile
         ? Math.max(74, Math.min(110, window.innerHeight * 0.12))
         : Math.max(105, Math.min(150, window.innerHeight * 0.15));
-      const cols = Math.ceil(window.innerWidth / cellX) + (isMobile ? 10 : 18);
-      const rows = Math.ceil(window.innerHeight / cellY) + (isMobile ? 10 : 16);
+      const cols = Math.ceil(window.innerWidth / cellX) + (isMobile ? 7 : 18);
+      const rows = Math.ceil(window.innerHeight / cellY) + (isMobile ? 7 : 16);
       const layers = isMobile ? [-110, 0, 110] : [-220, -110, 0, 110, 220];
       const offsetX = positiveModulo(pan.x, cellX);
       const offsetY = positiveModulo(pan.y, cellY);
@@ -1191,6 +1214,8 @@ Dreaming of us</textarea>
       scene.style.setProperty("--rx", `${rotation.x}deg`);
       scene.style.setProperty("--ry", `${rotation.y}deg`);
       scene.style.setProperty("--rz", `${rotation.z || 0}deg`);
+      scene.style.setProperty("--nrx", `${-rotation.x}deg`);
+      scene.style.setProperty("--nry", `${-rotation.y}deg`);
     }
 
     function stopInertia() {
@@ -1203,12 +1228,14 @@ Dreaming of us</textarea>
 
     function beginDrag(event) {
       stopInertia();
-      pan.x -= flowOffset.x;
-      pan.y -= flowOffset.y;
-      flowOffset = { x: 0, y: 0, tilt: flowOffset.tilt };
-      phraseRing.style.setProperty("--flow-x", "0px");
-      phraseRing.style.setProperty("--flow-y", "0px");
-      renderPhrases();
+      if (!isMobileViewport()) {
+        pan.x -= flowOffset.x;
+        pan.y -= flowOffset.y;
+        flowOffset = { x: 0, y: 0, tilt: flowOffset.tilt };
+        phraseRing.style.setProperty("--flow-x", "0px");
+        phraseRing.style.setProperty("--flow-y", "0px");
+        renderPhrases();
+      }
       stageWrap.setPointerCapture(event.pointerId);
       dragState = {
         lastX: event.clientX,
@@ -1220,8 +1247,8 @@ Dreaming of us</textarea>
       if (!dragState) return;
       const dx = event.clientX - dragState.lastX;
       const dy = event.clientY - dragState.lastY;
-      rotation.y += dx * 0.18;
-      rotation.x -= dy * 0.18;
+      rotation.y = normalizeAngle(rotation.y + dx * 0.18);
+      rotation.x = normalizeAngle(rotation.x - dy * 0.18);
       velocity.y = dx * 0.08;
       velocity.x = dy * -0.04;
       velocity.z = dy * 0.01;
