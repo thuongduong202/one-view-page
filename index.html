@@ -133,7 +133,7 @@
       border: 1px solid var(--panel-border);
       border-radius: 8px;
       backdrop-filter: blur(18px);
-      overflow-y: auto;
+      overflow: hidden;
       box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
       pointer-events: auto;
       transition: width 220ms ease, height 220ms ease, padding 220ms ease;
@@ -144,20 +144,22 @@
       top: 14px;
       right: 12px;
       z-index: 3;
+      appearance: none;
       display: grid;
-      width: 34px;
-      height: 34px;
+      width: 24px;
+      height: 24px;
       place-items: center;
-      border: 1px solid var(--panel-border);
-      border-radius: 8px;
+      border: 0;
+      border-radius: 0;
       color: var(--ink);
-      background: rgba(255, 255, 255, 0.08);
+      background: transparent;
       cursor: pointer;
+      padding: 0;
     }
 
     .sidebar-toggle::before {
       content: "<";
-      font-size: 20px;
+      font-size: 16px;
       line-height: 1;
     }
 
@@ -165,11 +167,15 @@
       width: 58px;
       height: 58px;
       padding: 58px 10px 14px;
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
       overflow: hidden;
     }
 
     .page.is-collapsed .sidebar-toggle {
-      left: 12px;
+      left: 17px;
       right: auto;
     }
 
@@ -179,8 +185,8 @@
 
     .music-float-toggle {
       position: fixed;
-      top: 86px;
-      left: 30px;
+      top: 18px;
+      right: 18px;
       z-index: 6;
       display: none;
       width: 34px;
@@ -240,6 +246,10 @@
     }
 
     .sidebar-content {
+      max-height: calc(100vh - 118px);
+      margin-top: 34px;
+      overflow-y: auto;
+      padding-right: 2px;
       transition: opacity 160ms ease, transform 180ms ease;
     }
 
@@ -742,14 +752,18 @@
         padding: 58px 10px 10px;
       }
 
+      .sidebar-content {
+        max-height: calc(100vh - 102px);
+      }
+
       .page.is-collapsed .sidebar-toggle {
-        left: 12px;
+        left: 17px;
         right: auto;
       }
 
       .music-float-toggle {
-        top: 78px;
-        left: 22px;
+        top: 10px;
+        right: 10px;
       }
 
       .stage-wrap {
@@ -889,6 +903,10 @@ Dreaming of us</textarea>
       </div>
     </aside>
 
+    <button class="music-float-toggle" id="floatingMusicToggle" type="button" aria-label="Play music">
+      <span class="music-icon" aria-hidden="true"></span>
+    </button>
+
     <section class="stage-wrap" id="stageWrap" aria-label="Không gian chữ và ảnh 3D">
       <div class="scene" id="scene">
         <div class="ring" id="phraseRing"></div>
@@ -912,6 +930,7 @@ Dreaming of us</textarea>
     const musicPlayer = document.getElementById("musicPlayer");
     const musicTitle = document.getElementById("musicTitle");
     const musicToggle = document.getElementById("musicToggle");
+    const floatingMusicToggle = document.getElementById("floatingMusicToggle");
     const musicRestart = document.getElementById("musicRestart");
     const fontSelect = document.getElementById("fontSelect");
     const addPhraseButton = document.getElementById("addPhrase");
@@ -1316,7 +1335,7 @@ Dreaming of us</textarea>
       }
     });
 
-    musicToggle.addEventListener("click", async () => {
+    async function toggleMusic() {
       if (musicPlayer.paused) {
         try {
           await musicPlayer.play();
@@ -1326,7 +1345,10 @@ Dreaming of us</textarea>
       } else {
         musicPlayer.pause();
       }
-    });
+    }
+
+    musicToggle.addEventListener("click", toggleMusic);
+    floatingMusicToggle.addEventListener("click", toggleMusic);
 
     musicRestart.addEventListener("click", async () => {
       musicPlayer.currentTime = 0;
@@ -1339,10 +1361,14 @@ Dreaming of us</textarea>
 
     musicPlayer.addEventListener("play", () => {
       musicToggle.textContent = "Pause";
+      floatingMusicToggle.classList.add("is-playing");
+      floatingMusicToggle.setAttribute("aria-label", "Pause music");
     });
 
     musicPlayer.addEventListener("pause", () => {
       musicToggle.textContent = "Play";
+      floatingMusicToggle.classList.remove("is-playing");
+      floatingMusicToggle.setAttribute("aria-label", "Play music");
     });
 
     sidebarToggle.addEventListener("click", () => {
