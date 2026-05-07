@@ -177,6 +177,68 @@
       content: ">";
     }
 
+    .music-float-toggle {
+      position: fixed;
+      top: 86px;
+      left: 30px;
+      z-index: 6;
+      display: none;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(18px);
+      cursor: pointer;
+    }
+
+    .music-float-toggle:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .page.is-collapsed .music-float-toggle {
+      display: grid;
+    }
+
+    .music-float-toggle .music-icon {
+      width: 0;
+      height: 0;
+      margin-left: 3px;
+      border-top: 8px solid transparent;
+      border-bottom: 8px solid transparent;
+      border-left: 12px solid currentColor;
+    }
+
+    .music-float-toggle.is-playing .music-icon {
+      position: relative;
+      width: 13px;
+      height: 15px;
+      margin-left: 0;
+      border: 0;
+    }
+
+    .music-float-toggle.is-playing .music-icon::before,
+    .music-float-toggle.is-playing .music-icon::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      width: 4px;
+      height: 15px;
+      border-radius: 2px;
+      background: currentColor;
+    }
+
+    .music-float-toggle.is-playing .music-icon::before {
+      left: 1px;
+    }
+
+    .music-float-toggle.is-playing .music-icon::after {
+      right: 1px;
+    }
+
     .sidebar-content {
       transition: opacity 160ms ease, transform 180ms ease;
     }
@@ -342,6 +404,35 @@
       color: #fff;
       background: rgba(255, 255, 255, 0.08);
       cursor: pointer;
+    }
+
+    .audio-panel {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .audio-title {
+      min-width: 0;
+      overflow: hidden;
+      color: rgba(255, 247, 251, 0.84);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    audio {
+      width: 100%;
+      height: 34px;
+    }
+
+    .music-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
     }
 
     .btn {
@@ -656,6 +747,11 @@
         right: auto;
       }
 
+      .music-float-toggle {
+        top: 78px;
+        left: 22px;
+      }
+
       .stage-wrap {
         min-height: 220vh;
         padding: 0;
@@ -752,6 +848,19 @@ Dreaming of us</textarea>
           </div>
 
           <div class="field">
+            <label for="musicUpload">Nhạc nền</label>
+            <input id="musicUpload" type="file" accept="audio/*">
+            <div class="audio-panel">
+              <div class="audio-title" id="musicTitle">default-music.mp3</div>
+              <audio id="musicPlayer" src="default-music.mp3" controls loop preload="metadata"></audio>
+              <div class="music-actions">
+                <button class="btn" id="musicToggle" type="button">Play</button>
+                <button class="btn secondary" id="musicRestart" type="button">Restart</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
             <label for="fontSelect">Font chữ</label>
             <select id="fontSelect">
               <option value='"Quicksand", "Nunito", "Segoe UI", ui-sans-serif, system-ui, sans-serif'>Quicksand</option>
@@ -799,6 +908,11 @@ Dreaming of us</textarea>
     const newPhraseInput = document.getElementById("newPhrase");
     const imageUpload = document.getElementById("imageUpload");
     const imageList = document.getElementById("imageList");
+    const musicUpload = document.getElementById("musicUpload");
+    const musicPlayer = document.getElementById("musicPlayer");
+    const musicTitle = document.getElementById("musicTitle");
+    const musicToggle = document.getElementById("musicToggle");
+    const musicRestart = document.getElementById("musicRestart");
     const fontSelect = document.getElementById("fontSelect");
     const addPhraseButton = document.getElementById("addPhrase");
     const applyButton = document.getElementById("apply");
@@ -845,6 +959,7 @@ Dreaming of us</textarea>
       name: "Default cosmic love",
       url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(defaultImageSvg)}`
     }];
+    let uploadedMusicUrl = "";
     let pan = { x: 0, y: 0 };
     let spin = 0;
     let renderFrame = null;
@@ -1178,6 +1293,56 @@ Dreaming of us</textarea>
       imageUpload.value = "";
       renderImageList();
       renderPhrases();
+    });
+
+    musicUpload.addEventListener("change", async () => {
+      const file = musicUpload.files?.[0];
+      if (!file) return;
+
+      if (uploadedMusicUrl) {
+        URL.revokeObjectURL(uploadedMusicUrl);
+      }
+
+      uploadedMusicUrl = URL.createObjectURL(file);
+      musicPlayer.src = uploadedMusicUrl;
+      musicPlayer.loop = true;
+      musicTitle.textContent = file.name;
+      musicUpload.value = "";
+
+      try {
+        await musicPlayer.play();
+      } catch (error) {
+        console.warn("Audio playback requires a user gesture in this browser.", error);
+      }
+    });
+
+    musicToggle.addEventListener("click", async () => {
+      if (musicPlayer.paused) {
+        try {
+          await musicPlayer.play();
+        } catch (error) {
+          console.warn("Audio playback requires a user gesture in this browser.", error);
+        }
+      } else {
+        musicPlayer.pause();
+      }
+    });
+
+    musicRestart.addEventListener("click", async () => {
+      musicPlayer.currentTime = 0;
+      try {
+        await musicPlayer.play();
+      } catch (error) {
+        console.warn("Audio playback requires a user gesture in this browser.", error);
+      }
+    });
+
+    musicPlayer.addEventListener("play", () => {
+      musicToggle.textContent = "Pause";
+    });
+
+    musicPlayer.addEventListener("pause", () => {
+      musicToggle.textContent = "Play";
     });
 
     sidebarToggle.addEventListener("click", () => {
